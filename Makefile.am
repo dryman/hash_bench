@@ -1,7 +1,7 @@
 #SUBDIRS = opic
 noinst_PROGRAMS = hash_bench robin_only
 
-hash_bench_SOURCES = hash_bench.cc
+hash_bench_SOURCES = hash_bench.cc MurmurHash3.cc
 #hash_bench_CXXFLAGS = -I$(top_builddir)/opic -I/usr/local/include
 hash_bench_CXXFLAGS = -I/usr/local/include
 hash_bench_LDADD = /usr/local/lib/libopic.a @atomic_LIBS@ @log4c_LIBS@

@@ -128,6 +128,7 @@ int main() {
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
+#include "MurmurHash3.h"
 
 /* compiler specific configuration */
 
@@ -394,9 +395,17 @@ static const double __ac_HASH_UPPER = 0.77;
  */
 static kh_inline khint_t __ac_X31_hash_string(const char *s)
 {
+  size_t len = strlen(s);
+  khint_t out;
+  MurmurHash3_x86_32(s, len, 421439783, &out);
+  return out;
+  /*
+     The original khash approach doesn't work because
+     it will read few bytes after the null terminated string.
 	khint_t h = (khint_t)*s;
 	if (h) for (++s ; *s; ++s) h = (h << 5) - h + (khint_t)*s;
 	return h;
+   */
 }
 /*! @function
   @abstract     Another interface to const char* hash function
