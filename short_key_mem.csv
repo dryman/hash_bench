@@ -1,4 +1,4 @@
-size, lower bound, robin_hood load 0.87, dense_hash_map, sparse_hash_map, std::unordered_map, libcuckoo, klib khash
+size, lower bound, robin hood load 0.89, dense hash map, sparse hash map, std::unordered map, libcuckoo, klib khash
 262144, 3670016, 5505024, 43012096, 20258816, 20324352, 28319744, 22093824
 524288, 7340032, 9940992, 84946944, 32129024, 39661568, 51388416, 43114496
 1048576, 14680064, 18776064, 168833024, 76148736, 77705216, 97533952, 85204992

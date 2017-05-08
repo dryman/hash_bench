@@ -1,4 +1,4 @@
-size, OPIC robin_hood load 0.87, dense_hash_map, sparse_hash_map, std::unordered_map, libcuckoo, klib khash
+size, OPIC robin hood load 0.89, dense hash map, sparse hash map, std::unordered map, libcuckoo, klib khash
 262144, 0.042339, 0.037643, 0.124381, 0.073378, 0.060967, 0.079790
 524288, 0.087672, 0.077881, 0.272322, 0.135718, 0.108127, 0.185947
 1048576, 0.198633, 0.146732, 0.671907, 0.291692, 0.217604, 0.412068

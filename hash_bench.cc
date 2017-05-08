@@ -504,6 +504,8 @@ void help(char* program)
      "                               std_unordered_map\n"
      "             de_no_cache: measures bare deserialization performance\n"
      "               supported impl: robin_hood\n"
+     "  -p pause   Pause between insertion and query so that we have time to\n" 
+     "             capture the memory it use.\n"
      "  -f file    file used in serialize, deserialize and deserialize_cached\n"
      "             mode.\n"
      "  -h         print help.\n"
