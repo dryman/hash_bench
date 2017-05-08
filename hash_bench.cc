@@ -191,26 +191,30 @@ uint64_t khash_get(char* key, void* context)
   //printf("%s\n", (char*)kh_key(kh, khint));
 }
 
-void rhh_in_memory(int num_power, uint64_t num, RunKey key_func, int keysize)
+void rhh_in_memory(int num_power, uint64_t num,
+                   RunKey key_func, int keysize, unsigned int pause)
 {
   OPHeap* heap;
   RobinHoodHash* rhh;
-  struct timeval start, mid, end;
+  struct timeval i_start, i_end, q_start, q_end;
 
   printf("RobinHoodHash in memory\n");
   op_assert(OPHeapNew(&heap), "Create OPHeap\n");
   op_assert(RHHNew(heap, &rhh, num,
                    0.95, keysize, 8), "Create RobinHoodHash\n");
 
-  gettimeofday(&start, NULL);
+  gettimeofday(&i_start, NULL);
   key_func(num_power, rhh_put, rhh);
+  gettimeofday(&i_end, NULL);
   printf("insert finished\n");
-  gettimeofday(&mid, NULL);
-  key_func(num_power, rhh_get, rhh);
-  gettimeofday(&end, NULL);
+  sleep(pause);
 
-  print_timediff("Insert time: ", start, mid);
-  print_timediff("Query time: ", mid, end);
+  gettimeofday(&q_start, NULL);
+  key_func(num_power, rhh_get, rhh);
+  gettimeofday(&q_end, NULL);
+
+  print_timediff("Insert time: ", i_start, i_end);
+  print_timediff("Query time: ", q_start, q_end);
   RHHDestroy(rhh);
   OPHeapDestroy(heap);
 }
@@ -296,27 +300,30 @@ void rhh_deserialize2(int num_power, RunKey key_func, char* file)
   print_timediff("Deserialization time for 64 short keys: ", start, end);
 }
 
-void um_in_memory(int num_power, uint64_t num, RunKey key_func)
+void um_in_memory(int num_power, uint64_t num, RunKey key_func, unsigned int pause)
 {
-  struct timeval start, mid, end;
+  struct timeval i_start, i_end, q_start, q_end;
   auto um = new std::unordered_map<std::string, uint64_t>(num);
 
   printf("std::unordered_map in memory\n");
-  gettimeofday(&start, NULL);
+  gettimeofday(&i_start, NULL);
   key_func(num_power, um_put, static_cast<void*>(um));
-  gettimeofday(&mid, NULL);
+  gettimeofday(&i_end, NULL);
+  printf("insert finished\n");
+  sleep(pause);
+  gettimeofday(&q_start, NULL);
   key_func(num_power, um_get, static_cast<void*>(um));
-  gettimeofday(&end, NULL);
+  gettimeofday(&q_end, NULL);
 
   delete um;
 
-  print_timediff("Insert time: ", start, mid);
-  print_timediff("Query time: ", mid, end);
+  print_timediff("Insert time: ", i_start, i_end);
+  print_timediff("Query time: ", q_start, q_end);
 }
 
-void dhm_in_memory(int num_power, uint64_t num, RunKey key_func)
+void dhm_in_memory(int num_power, uint64_t num, RunKey key_func, unsigned int pause)
 {
-  struct timeval start, mid, end;
+  struct timeval i_start, i_end, q_start, q_end;
   auto dhm = new google::dense_hash_map<std::string, uint64_t>(num);
   //dhm->max_load_factor(0.80);
   //dhm->resize(num);
@@ -325,36 +332,44 @@ void dhm_in_memory(int num_power, uint64_t num, RunKey key_func)
 
   printf("google::dense_hash_map in memory\n");
 
-  gettimeofday(&start, NULL);
+  gettimeofday(&i_start, NULL);
   key_func(num_power, dhm_put, static_cast<void*>(dhm));
-  gettimeofday(&mid, NULL);
+  gettimeofday(&i_end, NULL);
+  printf("insert finished\n");
+  sleep(pause);
+
+  gettimeofday(&q_start, NULL);
   key_func(num_power, dhm_get, static_cast<void*>(dhm));
-  gettimeofday(&end, NULL);
+  gettimeofday(&q_end, NULL);
+
+  print_timediff("Insert time: ", i_start, i_end);
+  print_timediff("Query time: ", q_start, q_end);
 
   delete dhm;
-
-  print_timediff("Insert time: ", start, mid);
-  print_timediff("Query time: ", mid, end);
 }
 
-void shm_in_memory(int num_power, uint64_t num, RunKey key_func)
+void shm_in_memory(int num_power, uint64_t num, RunKey key_func, unsigned int pause)
 {
-  struct timeval start, mid, end;
+  struct timeval i_start, i_end, q_start, q_end;
   auto shm = new google::sparse_hash_map<std::string, uint64_t>(num);
   shm->set_deleted_key("\xff");
 
   printf("google::sparse_hash_map in memory\n");
 
-  gettimeofday(&start, NULL);
+  gettimeofday(&i_start, NULL);
   key_func(num_power, shm_put, static_cast<void*>(shm));
-  gettimeofday(&mid, NULL);
+  gettimeofday(&i_end, NULL);
+  printf("insert finished\n");
+  sleep(pause);
+
+  gettimeofday(&q_start, NULL);
   key_func(num_power, shm_get, static_cast<void*>(shm));
-  gettimeofday(&end, NULL);
+  gettimeofday(&q_end, NULL);
+
+  print_timediff("Insert time: ", i_start, i_end);
+  print_timediff("Query time: ", q_start, q_end);
 
   delete shm;
-
-  print_timediff("Insert time: ", start, mid);
-  print_timediff("Query time: ", mid, end);
 }
 
 void shm_serialize(int num_power, uint64_t num, RunKey key_func,
@@ -410,37 +425,45 @@ void shm_deserialize(int num_power, RunKey key_func, char* file_name)
   print_timediff("Query time: ", mid, end);
 }
 
-void ckoo_in_memory(int num_power, uint64_t num, RunKey key_func)
+void ckoo_in_memory(int num_power, uint64_t num, RunKey key_func, unsigned int pause)
 {
-  struct timeval start, mid, end;
+  struct timeval i_start, i_end, q_start, q_end;
   auto ckoo = new cuckoohash_map<std::string, uint64_t>
     ((size_t)(num * 1.25)); // 0.8 load factor
 
   printf("cuckoohash_map in memory\n");
-  gettimeofday(&start, NULL);
+  gettimeofday(&i_start, NULL);
   key_func(num_power, ckoo_put, static_cast<void*>(ckoo));
-  gettimeofday(&mid, NULL);
+  gettimeofday(&i_end, NULL);
+  printf("insert finished\n");
+  sleep(pause);
+
+  gettimeofday(&q_start, NULL);
   key_func(num_power, ckoo_get, static_cast<void*>(ckoo));
-  gettimeofday(&end, NULL);
+  gettimeofday(&q_end, NULL);
+
+  print_timediff("Insert time: ", i_start, i_end);
+  print_timediff("Query time: ", q_start, q_end);
 
   delete ckoo;
-
-  print_timediff("Insert time: ", start, mid);
-  print_timediff("Query time: ", mid, end);
 }
 
-void khash_in_memory(int num_power, uint64_t num, RunKey key_func)
+void khash_in_memory(int num_power, uint64_t num, RunKey key_func, unsigned int pause)
 {
-  struct timeval start, mid, end;
+  struct timeval i_start, i_end, q_start, q_end;
   khash_t(str) *kh;
   kh = kh_init(str);
 
   printf("khash in memory\n");
-  gettimeofday(&start, NULL);
+  gettimeofday(&i_start, NULL);
   key_func(num_power, khash_put, kh);
-  gettimeofday(&mid, NULL);
+  gettimeofday(&i_end, NULL);
+  printf("insert finished\n");
+  sleep(pause);
+
+  gettimeofday(&q_start, NULL);
   key_func(num_power, khash_get, kh);
-  gettimeofday(&end, NULL);
+  gettimeofday(&q_end, NULL);
 
   khint_t khint;
   for (khint = 0; khint < kh_end(kh); ++khint)
@@ -449,8 +472,8 @@ void khash_in_memory(int num_power, uint64_t num, RunKey key_func)
 
   kh_destroy(str, kh);
 
-  print_timediff("Insert time: ", start, mid);
-  print_timediff("Query time: ", mid, end);
+  print_timediff("Insert time: ", i_start, i_end);
+  print_timediff("Query time: ", q_start, q_end);
 }
 
 void help(char* program)
@@ -498,10 +521,11 @@ int main(int argc, char* argv[])
   int k_len = 6;
   char* file_name = NULL;
   uint64_t num;
+  unsigned int pause = 0;
 
   num_power = 20;
 
-  while ((opt = getopt(argc, argv, "n:r:k:i:f:m:h")) > -1)
+  while ((opt = getopt(argc, argv, "n:r:k:i:f:m:p:h")) > -1)
     {
       switch (opt)
         {
@@ -566,6 +590,9 @@ int main(int argc, char* argv[])
         case 'f':
           file_name = optarg;
           break;
+        case 'p':
+          pause = atoi(optarg);
+          break;
         case 'h':
         case '?':
         default:
@@ -594,22 +621,22 @@ int main(int argc, char* argv[])
           switch(hash_impl)
             {
             case ROBIN_HOOD:
-              rhh_in_memory(num_power, num, key_func, k_len);
+              rhh_in_memory(num_power, num, key_func, k_len, pause);
               break;
             case STD_UNORDERED_MAP:
-              um_in_memory(num_power, num, key_func);
+              um_in_memory(num_power, num, key_func, pause);
               break;
             case DENSE_HASH_MAP:
-              dhm_in_memory(num_power, num, key_func);
+              dhm_in_memory(num_power, num, key_func, pause);
               break;
             case SPARSE_HASH_MAP:
-              shm_in_memory(num_power, num, key_func);
+              shm_in_memory(num_power, num, key_func, pause);
               break;
             case CUCKOO:
-              ckoo_in_memory(num_power, num, key_func);
+              ckoo_in_memory(num_power, num, key_func, pause);
               break;
             case KHASH:
-              khash_in_memory(num_power, num, key_func);
+              khash_in_memory(num_power, num, key_func, pause);
               break;
             }
           break;
