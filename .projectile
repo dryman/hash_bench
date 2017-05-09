@@ -1,0 +1,10 @@
+-*.o
+-*.dSYM
+-*.lo
+-autom4te.cache
+-.deps
+-.libs
+-.dirstamp
+-doc
+-doxy_build
+-doxygen-bootstrapped
