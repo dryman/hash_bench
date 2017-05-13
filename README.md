@@ -12,6 +12,7 @@ Dependencies:
 * [libcuckoo][cuckoo]
 * [autoconf][autoconf]
 * [automake][automake]
+* [cityhash][cityhash] (required for libcuckoo).
 
 [log4c]: http://log4c.sourceforge.net
 [opic]: https://github.com/dryman/opic
@@ -19,10 +20,11 @@ Dependencies:
 [cuckoo]: https://github.com/efficient/libcuckoo
 [autoconf]: https://www.gnu.org/software/autoconf/autoconf.html
 [automake]: https://www.gnu.org/software/automake/
+[cityhash]: https://github.com/google/cityhash
 
 ```
 autoreconf -vif
-./configure
+CFLAGS="-O3" CXXFLAGS="-O3" ./configure
 make
 ```
 
