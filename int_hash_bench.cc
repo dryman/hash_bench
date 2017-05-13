@@ -78,6 +78,33 @@ KHASH_MAP_INIT_INT(khash_int32, uint64_t)
 // A side effect to force hash get not optimized out.
 static uint64_t side_effect;
 
+uint64_t TomasWangInt64Hash(void* key_generic, size_t size)
+{
+  uint64_t key;
+  key = *(uint64_t*)key_generic;
+  key = (~key) + (key << 21); // key = (key << 21) - key - 1;
+  key = key ^ (key >> 24);
+  key = (key + (key << 3)) + (key << 8); // key * 265
+  key = key ^ (key >> 14);
+  key = (key + (key << 2)) + (key << 4); // key * 21
+  key = key ^ (key >> 28);
+  key = key + (key << 31);
+  return key;
+}
+
+uint64_t TomasWangIntHash(void* key_generic, size_t size)
+{
+  uint64_t key;
+  key = *(uint32_t*)key_generic;
+  key += ~(key << 15);
+  key ^=  (key >> 10);
+  key +=  (key << 3);
+  key ^=  (key >> 6);
+  key += ~(key << 11);
+  key ^=  (key >> 16);
+  return key;
+}
+
 void rhh_map_int32(int num, unsigned int pause)
 {
   OPHeap* heap;
@@ -86,13 +113,13 @@ void rhh_map_int32(int num, unsigned int pause)
 
   op_assert(OPHeapNew(&heap), "Create OPHeap\n");
   op_assert(RHHNew(heap, &rhh, num,
-                   0.95, 4, 8), "Create RobinHoodHash\n");
+                   0.25, 4, 8), "Create RobinHoodHash\n");
 
   gettimeofday(&i_start, NULL);
   for (uint32_t i = 0; i < num; i++)
     {
       uint64_t val = i;
-      RHHPut(rhh, &i, &val);
+      RHHPutCustom(rhh, TomasWangIntHash, &i, &val);
     }
   gettimeofday(&i_end, NULL);
   printf("insert finished\n");
@@ -102,7 +129,7 @@ void rhh_map_int32(int num, unsigned int pause)
   for (uint32_t i = 0; i < num; i++)
     {
       uint64_t* val;
-      val = (uint64_t*)RHHGet(rhh, &i);
+      val = (uint64_t*)RHHGetCustom(rhh, TomasWangIntHash, &i);
       side_effect+= *val;
     }
   gettimeofday(&q_end, NULL);
@@ -127,7 +154,7 @@ void rhh_map_int64(int num, unsigned int pause)
   for (uint64_t i = 0; i < num; i++)
     {
       uint64_t val = i;
-      RHHPut(rhh, &i, &val);
+      RHHPutCustom(rhh, TomasWangInt64Hash, &i, &val);
     }
   gettimeofday(&i_end, NULL);
   printf("insert finished\n");
@@ -137,7 +164,7 @@ void rhh_map_int64(int num, unsigned int pause)
   for (uint64_t i = 0; i < num; i++)
     {
       uint64_t* val;
-      val = (uint64_t*)RHHGet(rhh, &i);
+      val = (uint64_t*)RHHGetCustom(rhh, TomasWangInt64Hash, &i);
       side_effect+= *val;
     }
   gettimeofday(&q_end, NULL);
@@ -161,7 +188,7 @@ void rhh_set_int32(int num, unsigned int pause)
   gettimeofday(&i_start, NULL);
   for (uint32_t i = 0; i < num; i++)
     {
-      RHHPut(rhh, &i, NULL);
+      RHHPutCustom(rhh, TomasWangIntHash, &i, NULL);
     }
   gettimeofday(&i_end, NULL);
   printf("insert finished\n");
@@ -170,7 +197,7 @@ void rhh_set_int32(int num, unsigned int pause)
   gettimeofday(&q_start, NULL);
   for (uint32_t i = 0; i < num; i++)
     {
-      if (RHHGet(rhh, &i))
+      if (RHHGetCustom(rhh, TomasWangIntHash, &i))
         side_effect++;
     }
   gettimeofday(&q_end, NULL);
@@ -194,7 +221,7 @@ void rhh_set_int64(int num, unsigned int pause)
   gettimeofday(&i_start, NULL);
   for (uint64_t i = 0; i < num; i++)
     {
-      RHHPut(rhh, &i, NULL);
+      RHHPutCustom(rhh, TomasWangIntHash, &i, NULL);
     }
   gettimeofday(&i_end, NULL);
   printf("insert finished\n");
@@ -203,7 +230,7 @@ void rhh_set_int64(int num, unsigned int pause)
   gettimeofday(&q_start, NULL);
   for (uint64_t i = 0; i < num; i++)
     {
-      if (RHHGet(rhh, &i))
+      if (RHHGetCustom(rhh, TomasWangIntHash, &i))
         side_effect++;
     }
   gettimeofday(&q_end, NULL);
@@ -599,6 +626,7 @@ int main(int argc, char* argv[])
       printf("attempt %d\n", i + 1);
       fun(num, pause);
     }
+  printf("side effect: %" PRIu64 "\n", side_effect);
 
   return 0;
 }

@@ -9,27 +9,64 @@
 #include "opic/op_malloc.h"
 #include "opic/hash/robin_hood.h"
 
-typedef uint64_t (*HashFunc)(char* key, void* context);
-typedef void (*RunKey)(int size, HashFunc hash_func, void* context);
-static void run_short_keys(int size, HashFunc hash_func, void* context);
-static void run_mid_keys(int size, HashFunc hash_func, void* context);
-static void run_long_keys(int size, HashFunc hash_func, void* context);
-static void run_long_int(int size, HashFunc hash_func, void* context);
+
+typedef uint64_t (*HashFunc)(void* key, void* context, OPHash hasher);
+typedef void (*RunKey)(int size, HashFunc hash_func,
+                       void* context, OPHash hasher);
+static void run_short_keys(int size, HashFunc hash_func,
+                           void* context, OPHash hasher);
+static void run_mid_keys(int size, HashFunc hash_func,
+                         void* context, OPHash hasher);
+static void run_long_keys(int size, HashFunc hash_func,
+                          void* context, OPHash hasher);
+
+static void run_int32(int size, HashFunc hash_func,
+                      void* context, OPHash hasher);
+static void run_int64(int size, HashFunc hash_func,
+                      void* context, OPHash hasher);
+
 static void print_timediff(const char* info,
                            struct timeval start, struct timeval end);
 
-uint64_t rhh_put(char* key, void* context)
+uint64_t TomasWangInt64Hash(void* key_generic, size_t size)
+{
+  uint64_t key;
+  key = *(uint64_t*)key_generic;
+  key = (~key) + (key << 21); // key = (key << 21) - key - 1;
+  key = key ^ (key >> 24);
+  key = (key + (key << 3)) + (key << 8); // key * 265
+  key = key ^ (key >> 14);
+  key = (key + (key << 2)) + (key << 4); // key * 21
+  key = key ^ (key >> 28);
+  key = key + (key << 31);
+  return key;
+}
+
+uint64_t TomasWangIntHash(void* key_generic, size_t size)
+{
+  uint64_t key;
+  key = *(uint32_t*)key_generic;
+  key += ~(key << 15);
+  key ^=  (key >> 10);
+  key +=  (key << 3);
+  key ^=  (key >> 6);
+  key += ~(key << 11);
+  key ^=  (key >> 16);
+  return key;
+}
+
+uint64_t rhh_put(void* key, void* context, OPHash hasher)
 {
   RobinHoodHash* rhh = (RobinHoodHash*)context;
   uint64_t val = 0;
-  RHHPut(rhh, key, &val);
+  RHHPutCustom(rhh, hasher, key, &val);
   return 0;
 }
 
-uint64_t rhh_get(char* key, void* context)
+uint64_t rhh_get(void* key, void* context, OPHash hasher)
 {
   RobinHoodHash* rhh = (RobinHoodHash*)context;
-  return *(uint64_t*)RHHGet(rhh, key);
+  return *(uint64_t*)RHHGetCustom(rhh, hasher, key);
 }
 
 void help(char* program)
@@ -41,11 +78,10 @@ void help(char* program)
      "             -n 20 => run 2^20 = 1 million elements.\n"
      "             defaults to 20\n"
      "  -r repeat  Repeat the benchmar for `repeat` times.\n"
-     "  -k keytype keytype = short_string, mid_string, long_string or\n"
-     "             long_int\n"
-     "             short_string: 6 bytes, mid_string: 32 bytes,\n"
-     "             long_string: 256 bytes, long_int: 8 bytes\n"
-     "             For now only robin_hood hash supports long_int benchmark\n"
+     "  -k keytype keytype = s_string, m_string, l_string,\n"
+     "             int32, int64\n"
+     "             s_string: 6 bytes, m_string: 32 bytes,\n"
+     "             l_string: 256 bytes\n"
      "  -h         print help.\n"
      ,program);
   exit(1);
@@ -61,9 +97,11 @@ int main(int argc, char* argv[])
   uint64_t num;
   OPHeap* heap;
   RobinHoodHash* rhh;
+  double load = 0.8;
   struct timeval start, mid, end;
+  OPHash hasher = &OPDefaultHash;
 
-  while ((opt = getopt(argc, argv, "n:r:k:h")) > -1)
+  while ((opt = getopt(argc, argv, "n:r:k:l:h")) > -1)
     {
       switch (opt)
         {
@@ -74,28 +112,38 @@ int main(int argc, char* argv[])
           repeat = atoi(optarg);
           break;
         case 'k':
-          if (!strcmp("short_string", optarg))
+          if (!strcmp("s_string", optarg))
             {
               key_func = run_short_keys;
               k_len = 6;
             }
-          else if (!strcmp("mid_string", optarg))
+          else if (!strcmp("m_string", optarg))
             {
               key_func = run_mid_keys;
               k_len = 32;
             }
-          else if (!strcmp("long_string", optarg))
+          else if (!strcmp("l_string", optarg))
             {
               key_func = run_long_keys;
               k_len = 256;
             }
-          else if (!strcmp("long_int", optarg))
+          else if (!strcmp("int32", optarg))
             {
-              key_func = run_long_int;
+              key_func = run_int32;
+              //hasher = TomasWangIntHash;
+              k_len = 4;
+            }
+          else if (!strcmp("int64", optarg))
+            {
+              key_func = run_int64;
+              hasher = TomasWangInt64Hash;
               k_len = 8;
             }
           else
             help(argv[0]);
+          break;
+        case 'l':
+          load = atof(optarg);
           break;
         case 'h':
         case '?':
@@ -109,15 +157,15 @@ int main(int argc, char* argv[])
   op_assert(OPHeapNew(&heap), "Create OPHeap\n");
 
   for (int i = 0; i < repeat; i++)
-    {   
-      printf("attempt %d\n", i + 1); 
+    {
+      printf("attempt %d\n", i + 1);
       op_assert(RHHNew(heap, &rhh, num,
-                       0.8, k_len, 8), "Create RobinHoodHash\n");
+                       load, k_len, 8), "Create RobinHoodHash\n");
       gettimeofday(&start, NULL);
-      key_func(num_power, rhh_put, rhh);
+      key_func(num_power, rhh_put, rhh, hasher);
       printf("insert finished\n");
       gettimeofday(&mid, NULL);
-      key_func(num_power, rhh_get, rhh);
+      key_func(num_power, rhh_get, rhh, hasher);
       gettimeofday(&end, NULL);
 
       print_timediff("Insert time: ", start, mid);
@@ -131,7 +179,8 @@ int main(int argc, char* argv[])
 
 }
 
-void run_short_keys(int size, HashFunc hash_func, void* context)
+void run_short_keys(int size, HashFunc hash_func,
+                    void* context, OPHash hasher)
 {
   op_assert(size >= 12, "iteration size must > 2^12\n");
   int i_bound = 1 << (size - 12);
@@ -150,13 +199,14 @@ void run_short_keys(int size, HashFunc hash_func, void* context)
             {
               uuid[0] = 0x21 + k;
               counter++;
-              hash_func(uuid, context);
+              hash_func(uuid, context, hasher);
             }
         }
     }
 }
 
-void run_mid_keys(int size, HashFunc hash_func, void* context)
+void run_mid_keys(int size, HashFunc hash_func,
+                  void* context, OPHash hasher)
 {
   op_assert(size >= 12, "iteration size must > 2^12\n");
   int i_bound = 1 << (size - 12);
@@ -184,13 +234,14 @@ void run_mid_keys(int size, HashFunc hash_func, void* context)
               uuid[0+16] = 0x21 + k;
               uuid[0+24] = 0x21 + k;
               counter++;
-              hash_func(uuid, context);
+              hash_func(uuid, context, hasher);
             }
         }
     }
 }
 
-void run_long_keys(int size, HashFunc hash_func, void* context)
+void run_long_keys(int size, HashFunc hash_func,
+                   void* context, OPHash hasher)
 {
   op_assert(size >= 12, "iteration size must > 2^12\n");
   int i_bound = 1 << (size - 12);
@@ -220,20 +271,31 @@ void run_long_keys(int size, HashFunc hash_func, void* context)
               for (int h = 0; h < 256; h+=8)
                 uuid[h] = 0x21 + k;
               counter++;
-              hash_func(uuid, context);
+              hash_func(uuid, context, hasher);
             }
         }
     }
 }
 
-void run_long_int(int size, HashFunc hash_func, void* context)
+void run_int32(int size, HashFunc hash_func,
+               void* context, OPHash hasher)
+{
+  op_assert(size >= 12, "iteration size must > 2^12\n");
+  uint32_t i_bound = 1 << size;
+  for (uint32_t i = 0; i < i_bound; i++)
+    {
+      hash_func(&i, context, hasher);
+    }
+}
+
+void run_int64(int size, HashFunc hash_func,
+               void* context, OPHash hasher)
 {
   op_assert(size >= 12, "iteration size must > 2^12\n");
   uint64_t i_bound = 1 << size;
-  uint64_t counter = 0;
   for (uint64_t i = 0; i < i_bound; i++)
     {
-      hash_func((char*)&i, context);
+      hash_func(&i, context, hasher);
     }
 }
 

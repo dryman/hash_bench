@@ -63,6 +63,7 @@
 #include <google/dense_hash_map>
 #include <google/sparse_hash_map>
 #include <libcuckoo/cuckoohash_map.hh>
+#include <libcuckoo/city_hasher.hh>
 
 
 typedef uint64_t (*HashFunc)(char* key, void* context);
@@ -425,14 +426,16 @@ void shm_deserialize(int num_power, RunKey key_func, char* file_name)
   print_timediff("Query time: ", mid, end);
 }
 
-void ckoo_in_memory(int num_power, uint64_t num, RunKey key_func, unsigned int pause)
+void ckoo_in_memory(int num_power, uint64_t num, RunKey key_func,
+                    unsigned int pause)
 {
   struct timeval i_start, i_end, q_start, q_end;
-  auto ckoo = new cuckoohash_map<std::string, uint64_t>
-    ((size_t)(num * 1.25)); // 0.8 load factor
+  auto ckoo = new cuckoohash_map<std::string, uint64_t,
+                                 CityHasher<std::string>> (num);
 
   printf("cuckoohash_map in memory\n");
   gettimeofday(&i_start, NULL);
+  ckoo->lock_table();
   key_func(num_power, ckoo_put, static_cast<void*>(ckoo));
   gettimeofday(&i_end, NULL);
   printf("insert finished\n");
@@ -442,6 +445,7 @@ void ckoo_in_memory(int num_power, uint64_t num, RunKey key_func, unsigned int p
   key_func(num_power, ckoo_get, static_cast<void*>(ckoo));
   gettimeofday(&q_end, NULL);
 
+  //ckoo->unlock();
   print_timediff("Insert time: ", i_start, i_end);
   print_timediff("Query time: ", q_start, q_end);
 
