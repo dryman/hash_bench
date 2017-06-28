@@ -66,7 +66,7 @@
 #include <libcuckoo/city_hasher.hh>
 
 
-typedef uint64_t (*HashFunc)(char* key, void* context);
+typedef uint64_t (*HashFunc)(std::string const &key, void* context);
 typedef void (*RunKey)(int size, HashFunc hash_func, void* context);
 static void run_short_keys(int size, HashFunc hash_func, void* context);
 static void run_mid_keys(int size, HashFunc hash_func, void* context);
@@ -95,34 +95,34 @@ enum BENCHMARK_MODE
     DE_NO_CACHE,
   };
 
-uint64_t rhh_put(char* key, void* context)
+uint64_t rhh_put(std::string const &key, void* context)
 {
   RobinHoodHash* rhh = (RobinHoodHash*)context;
   uint64_t val = 0;
-  RHHPut(rhh, key, &val);
+  RHHPut(rhh, (char*)key.c_str(), &val);
   return 0;
 }
 
-uint64_t rhh_get(char* key, void* context)
+uint64_t rhh_get(std::string const &key, void* context)
 {
   RobinHoodHash* rhh = (RobinHoodHash*)context;
-  return *(uint64_t*)RHHGet(rhh, key);
+  return *(uint64_t*)RHHGet(rhh, (char*)key.c_str());
 }
 
-uint64_t um_put(char* key, void* context)
+uint64_t um_put(std::string const &key, void* context)
 {
   auto um = static_cast<std::unordered_map<std::string, uint64_t>*>(context);
   um->insert(std::make_pair(key, 0));
   return 0;
 }
 
-uint64_t um_get(char* key, void* context)
+uint64_t um_get(std::string const &key, void* context)
 {
   auto um = static_cast<std::unordered_map<std::string, uint64_t>*>(context);
   return um->at(key);
 }
 
-uint64_t dhm_put(char* key, void* context)
+uint64_t dhm_put(std::string const &key, void* context)
 {
   auto dhm = static_cast<google::dense_hash_map
                          <std::string, uint64_t>*>(context);
@@ -130,7 +130,7 @@ uint64_t dhm_put(char* key, void* context)
   return 0;
 }
 
-uint64_t dhm_get(char* key, void* context)
+uint64_t dhm_get(std::string const &key, void* context)
 {
   auto dhm = static_cast<google::dense_hash_map
                          <std::string, uint64_t>*>(context);
@@ -138,7 +138,7 @@ uint64_t dhm_get(char* key, void* context)
   return search->second;
 }
 
-uint64_t shm_put(char* key, void* context)
+uint64_t shm_put(std::string const &key, void* context)
 {
   auto shm = static_cast<google::sparse_hash_map
                          <std::string, uint64_t>*>(context);
@@ -146,7 +146,7 @@ uint64_t shm_put(char* key, void* context)
   return 0;
 }
 
-uint64_t shm_get(char* key, void* context)
+uint64_t shm_get(std::string const &key, void* context)
 {
   auto shm = static_cast<google::sparse_hash_map
                          <std::string, uint64_t>*>(context);
@@ -154,40 +154,40 @@ uint64_t shm_get(char* key, void* context)
   return search->second;
 }
 
-uint64_t ckoo_put(char* key, void* context)
+uint64_t ckoo_put(std::string const &key, void* context)
 {
   auto ckoo = static_cast<cuckoohash_map<std::string, uint64_t>*>(context);
   ckoo->insert(key, 0);
   return 0;
 }
 
-uint64_t ckoo_get(char* key, void* context)
+uint64_t ckoo_get(std::string const &key, void* context)
 {
   auto ckoo = static_cast<cuckoohash_map<std::string, uint64_t>*>(context);
   return ckoo->find(key);
 }
 
-uint64_t khash_put(char* key, void* context)
+uint64_t khash_put(std::string const &key, void* context)
 {
   khash_t(str) *kh;
   int absent;
   khint_t khint;
   kh = (khash_t(str)*)context;
-  khint = kh_put(str, kh, key, &absent);
+  khint = kh_put(str, kh, (char*)key.c_str(), &absent);
   if (absent)
     {
-      kh_key(kh, khint) = strdup(key);
+      kh_key(kh, khint) = strdup((char*)key.c_str());
       kh_value(kh, khint) = 0;
     }
   return 0;
 }
 
-uint64_t khash_get(char* key, void* context)
+uint64_t khash_get(std::string const &key, void* context)
 {
   khash_t(str) *kh;
   khint_t khint;
   kh = (khash_t(str)*)context;
-  khint = kh_get(str, kh, key);
+  khint = kh_get(str, kh, (char*)key.c_str());
   return (uint64_t)kh_value(kh, khint);
   //printf("%s\n", (char*)kh_key(kh, khint));
 }
@@ -694,7 +694,7 @@ void run_short_keys(int size, HashFunc hash_func, void* context)
 {
   op_assert(size >= 12, "iteration size must > 2^12\n");
   int i_bound = 1 << (size - 12);
-  char uuid [] = "!!!!!!";
+  std::string uuid = "!!!!!!";
   uint64_t counter = 0;
   for (int i = 0; i < i_bound; i++)
     {
@@ -719,7 +719,7 @@ void run_mid_keys(int size, HashFunc hash_func, void* context)
 {
   op_assert(size >= 12, "iteration size must > 2^12\n");
   int i_bound = 1 << (size - 12);
-  char uuid [] = "!!!!!!--!!!!!!--!!!!!!--!!!!!!--";
+  std::string uuid = "!!!!!!--!!!!!!--!!!!!!--!!!!!!--";
   uint64_t counter = 0;
   for (int i = 0; i < i_bound; i++)
     {
@@ -753,7 +753,7 @@ void run_long_keys(int size, HashFunc hash_func, void* context)
 {
   op_assert(size >= 12, "iteration size must > 2^12\n");
   int i_bound = 1 << (size - 12);
-  char uuid [] =
+  std::string uuid =
     "!!!!!!--!!!!!!--!!!!!!--!!!!!!--"
     "!!!!!!--!!!!!!--!!!!!!--!!!!!!--"
     "!!!!!!--!!!!!!--!!!!!!--!!!!!!--"
