@@ -119,7 +119,7 @@ void rhh_map_int32(int num, unsigned int pause)
   for (uint32_t i = 0; i < num; i++)
     {
       uint64_t val = i;
-      RHHPutCustom(rhh, TomasWangIntHash, &i, &val);
+      RHHInsertCustom(rhh, TomasWangIntHash, &i, &val);
     }
   gettimeofday(&i_end, NULL);
   printf("insert finished\n");
@@ -154,7 +154,7 @@ void rhh_map_int64(int num, unsigned int pause)
   for (uint64_t i = 0; i < num; i++)
     {
       uint64_t val = i;
-      RHHPutCustom(rhh, TomasWangInt64Hash, &i, &val);
+      RHHInsertCustom(rhh, TomasWangInt64Hash, &i, &val);
     }
   gettimeofday(&i_end, NULL);
   printf("insert finished\n");
@@ -188,7 +188,7 @@ void rhh_set_int32(int num, unsigned int pause)
   gettimeofday(&i_start, NULL);
   for (uint32_t i = 0; i < num; i++)
     {
-      RHHPutCustom(rhh, TomasWangIntHash, &i, NULL);
+      RHHInsertCustom(rhh, TomasWangIntHash, &i, NULL);
     }
   gettimeofday(&i_end, NULL);
   printf("insert finished\n");
@@ -221,7 +221,7 @@ void rhh_set_int64(int num, unsigned int pause)
   gettimeofday(&i_start, NULL);
   for (uint64_t i = 0; i < num; i++)
     {
-      RHHPutCustom(rhh, TomasWangIntHash, &i, NULL);
+      RHHInsertCustom(rhh, TomasWangIntHash, &i, NULL);
     }
   gettimeofday(&i_end, NULL);
   printf("insert finished\n");

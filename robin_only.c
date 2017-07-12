@@ -59,7 +59,7 @@ uint64_t rhh_put(void* key, void* context, OPHash hasher)
 {
   RobinHoodHash* rhh = (RobinHoodHash*)context;
   uint64_t val = 0;
-  RHHPutCustom(rhh, hasher, key, &val);
+  RHHInsertCustom(rhh, hasher, key, &val);
   return 0;
 }
 

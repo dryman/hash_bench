@@ -99,7 +99,7 @@ uint64_t rhh_put(std::string const &key, void* context)
 {
   RobinHoodHash* rhh = (RobinHoodHash*)context;
   uint64_t val = 0;
-  RHHPut(rhh, (char*)key.c_str(), &val);
+  RHHInsert(rhh, (char*)key.c_str(), &val);
   return 0;
 }
 
@@ -326,8 +326,8 @@ void dhm_in_memory(int num_power, uint64_t num, RunKey key_func, unsigned int pa
 {
   struct timeval i_start, i_end, q_start, q_end;
   auto dhm = new google::dense_hash_map<std::string, uint64_t>(num);
-  //dhm->max_load_factor(0.80);
-  //dhm->resize(num);
+  dhm->max_load_factor(0.80);
+  dhm->resize(num);
   dhm->set_empty_key("\x00");
   dhm->set_deleted_key("\xff");
 
